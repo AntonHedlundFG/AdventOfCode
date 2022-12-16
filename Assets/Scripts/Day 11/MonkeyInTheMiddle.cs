@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,7 +9,7 @@ public class MonkeyInTheMiddle : AdventOfCode
         _divideByThree = true;
         Monkey[] monkeys = GenerateMonkeys();
         RunRounds(ref monkeys, 20);
-        int mb = CalculateMonkeyBusiness(monkeys);
+        ulong mb = CalculateMonkeyBusiness(monkeys);
         Debug.Log(mb);
     }
 
@@ -20,19 +18,19 @@ public class MonkeyInTheMiddle : AdventOfCode
         _divideByThree = false;
         Monkey[] monkeys = GenerateMonkeys();
         RunRounds(ref monkeys, 10000);
-        int mb = CalculateMonkeyBusiness(monkeys);
+        ulong mb = CalculateMonkeyBusiness(monkeys);
         Debug.Log(mb);
     }
-    
+
 
     private struct Monkey
     {
-        public List<int> ItemList;
+        public List<ulong> ItemList;
         public Operation Operation;
-        public int Divisor;
+        public ulong Divisor;
         public int trueTarget;
         public int falseTarget;
-        public int throwAmount;
+        public ulong throwAmount;
     }
 
     private struct Operation
@@ -80,20 +78,20 @@ public class MonkeyInTheMiddle : AdventOfCode
 
     private void ParseTest(string[] testLines, ref Monkey monkey)
     {
-        monkey.Divisor = int.Parse(TrimLine(testLines[0])[3]);
+        monkey.Divisor = ulong.Parse(TrimLine(testLines[0])[3]);
         monkey.trueTarget = int.Parse(TrimLine(testLines[1])[5]);
         monkey.falseTarget = int.Parse(TrimLine(testLines[2])[5]);
     }
 
-    List<int> ParseStartingItems(string line)
+    List<ulong> ParseStartingItems(string line)
     {
-        List<int> returnList = new List<int>();
+        List<ulong> returnList = new List<ulong>();
 
         string[] words = TrimLine(line);
-        
+
         for (int i = 2; i < words.Length; i++)
         {
-            returnList.Add(int.Parse(words[i]));
+            returnList.Add(ulong.Parse(words[i]));
         }
 
         return returnList;
@@ -105,8 +103,9 @@ public class MonkeyInTheMiddle : AdventOfCode
         string[] words = TrimLine(line);
 
         op.Operator = words[4] == "+" ? Operator.Add : Operator.Multiply;
-        op.A = words[3] == "old" ? null : int.Parse(words[3]);
-        op.B = words[5] == "old" ? null : int.Parse(words[5]);
+
+        op.A = int.TryParse(words[3], out int a) ? a : null;
+        op.A = int.TryParse(words[5], out int b) ? b : null;
 
         return op;
     }
@@ -129,24 +128,27 @@ public class MonkeyInTheMiddle : AdventOfCode
         ref Monkey monkey = ref monkeys[throwerIndex];
         while (monkey.ItemList.Count != 0)
         {
-            int itemValue = monkey.ItemList[0];
+            ulong itemValue = monkey.ItemList[0];
             monkey.ItemList.RemoveAt(0);
             monkey.throwAmount++;
 
             itemValue = InspectItem(monkey.Operation, itemValue);
-            if(_divideByThree) { itemValue = itemValue / 3; }
-            
+
+            if (_divideByThree) { itemValue = itemValue / 3; }
+            itemValue = itemValue % LeastMonkeyDivisor(monkeys);
+
+
             int targetMonkey = (itemValue % monkey.Divisor == 0)
                 ? monkey.trueTarget
                 : monkey.falseTarget;
-            monkeys[targetMonkey].ItemList.Add(itemValue % LeastMonkeyDivisor(monkeys));
+            monkeys[targetMonkey].ItemList.Add(itemValue);
         }
     }
 
-    private int InspectItem(Operation op, int startValue)
+    private ulong InspectItem(Operation op, ulong startValue)
     {
-        int a = (op.A == null) ? startValue : (int)op.A;
-        int b = (op.B == null) ? startValue : (int)op.B;
+        ulong a = (op.A == null) ? startValue : (ulong)op.A;
+        ulong b = (op.B == null) ? startValue : (ulong)op.B;
         switch (op.Operator)
         {
             case Operator.Add:
@@ -168,7 +170,7 @@ public class MonkeyInTheMiddle : AdventOfCode
         }
     }
 
-    private int CalculateMonkeyBusiness(Monkey[] monkeys)
+    private ulong CalculateMonkeyBusiness(Monkey[] monkeys)
     {
         int a = -1, b = -1;
         for (int i = 0; i < monkeys.Length; i++)
@@ -177,7 +179,8 @@ public class MonkeyInTheMiddle : AdventOfCode
             {
                 b = a;
                 a = i;
-            } else if (b == -1 || monkeys[i].throwAmount > monkeys[b].throwAmount)
+            }
+            else if (b == -1 || monkeys[i].throwAmount > monkeys[b].throwAmount)
             {
                 b = i;
             }
@@ -186,12 +189,12 @@ public class MonkeyInTheMiddle : AdventOfCode
         return monkeys[a].throwAmount * monkeys[b].throwAmount;
     }
 
-    private int LeastMonkeyDivisor(Monkey[] monkeys)
+    private ulong LeastMonkeyDivisor(Monkey[] monkeys)
     {
-        int a = 1;
+        ulong a = 1;
         foreach (Monkey monkey in monkeys)
         {
-            a *= monkey.Divisor;
+            a = a * monkey.Divisor;
         }
 
         return a;
